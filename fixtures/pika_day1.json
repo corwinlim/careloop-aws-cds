@@ -1,0 +1,11 @@
+{
+  "journey": {
+    "pet_name": "Pika",
+    "contact_id": "parent-001",
+    "trigger": "day_1_follow_up"
+  },
+  "outbound": "How is Pika doing today?",
+  "parent_reply": "Pika only ate half his dinner.",
+  "expected_observation_category": "appetite",
+  "expected_policy": "continue_follow_up"
+}
