@@ -1,8 +1,9 @@
-"""CareLoop synthetic pet-care staging Lambda. No clinical advice, dry-run by default."""
+"""Synthetic staging follow-ups. Dry-run default; guarded at-most-one send attempt."""
 import hashlib
 import json
 import os
 import re
+import time
 
 
 def _approve_digest(recipient, subject, body):
@@ -12,9 +13,9 @@ def _approve_digest(recipient, subject, body):
 
 def handler(event, context):
     event = event if isinstance(event, dict) else {}
-    case_id = str(event.get("case_id", ""))
-    status = str(event.get("observation", "")).lower()
-    if not re.fullmatch(r"SYN-[A-Za-z0-9_-]{1,40}", case_id):
+    case_id = event.get("case_id")
+    status = event.get("observation")
+    if not isinstance(case_id, str) or not re.fullmatch(r"SYN-[A-Za-z0-9_-]{1,40}", case_id):
         return {"status": "rejected", "reason": "synthetic_case_id_required"}
     if status not in ("normal", "appetite_change", "needs_followup"):
         return {"status": "rejected", "reason": "unsupported_observation"}
@@ -37,8 +38,30 @@ def handler(event, context):
         return {**base, "status": "blocked", "reason": "exact_payload_approval_required"}
     if event.get("send_once") is not True:
         return {**base, "status": "blocked", "reason": "send_once_required"}
+
+    # Fail closed unless an atomic durable claim ledger is configured.
+    # Claim before sending: timeouts leave outcome uncertain, never auto-retry.
+    table = os.environ.get("CARELOOP_SEND_LEDGER_TABLE", "")
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{3,255}", table):
+        return {**base, "status": "blocked", "reason": "durable_send_ledger_required"}
+
     import boto3
-    result = boto3.client("sesv2", region_name=region).send_email(
+    from botocore.exceptions import ClientError
+    ddb = boto3.client("dynamodb", region_name=region)
+    try:
+        ddb.put_item(
+            TableName=table,
+            Item={"payload_digest": {"S": digest}, "case_id": {"S": case_id},
+                  "state": {"S": "CLAIMED_UNCERTAIN"}, "created_at_epoch": {"N": str(int(time.time()))}},
+            ConditionExpression="attribute_not_exists(payload_digest)",
+        )
+    except ClientError as exc:
+        if exc.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+            return {**base, "status": "blocked", "reason": "duplicate_or_previous_attempt"}
+        raise
+
+    ses = boto3.client("sesv2", region_name=region)
+    result = ses.send_email(
         FromEmailAddress=sender, Destination={"ToAddresses": [recipient]},
         Content={"Simple": {"Subject": {"Data": subject}, "Body": {"Text": {"Data": body}}}},
     )
