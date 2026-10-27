@@ -34,5 +34,16 @@ class HandlerTests(unittest.TestCase):
         with patch.dict(os.environ, ENV):
             self.assertFalse(handler(dict(EVENT, observation='normal'), None)['followup_required'])
 
+    def test_no_ledger_blocks_approved_send(self):
+        with patch.dict(os.environ, dict(ENV, CARELOOP_ENABLE_LIVE_SEND='true'), clear=True):
+            dry = handler(EVENT, None)
+            approved = dict(EVENT, approved_payload_sha256=dry['payload_sha256'], explicit_staff_approval=True, send_once=True)
+            self.assertEqual(handler(approved, None)['reason'], 'durable_send_ledger_required')
+
+    def test_rejects_malformed_input(self):
+        with patch.dict(os.environ, ENV):
+            for event in (None, {"case_id": None, "observation": "normal"}, {"case_id": "SYN-001", "observation": 4}):
+                self.assertEqual(handler(event, None)['status'], 'rejected')
+
 if __name__ == '__main__':
     unittest.main()
