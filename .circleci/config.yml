@@ -1,0 +1,31 @@
+version: 2.1
+
+jobs:
+  careloop-safety-tests:
+    docker:
+      - image: cimg/python:3.12
+    resource_class: small
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Install test dependencies
+          command: |
+            python -m pip install --upgrade pip
+            python -m pip install -r requirements.txt
+      - run:
+          name: Run synthetic CareLoop tests
+          command: |
+            mkdir -p test-results
+            PYTHONPATH="$PWD/src:$PWD" python -m pytest tests -q --junitxml=test-results/pytest.xml
+      - run:
+          name: Validate Lambda Python syntax
+          command: |
+            python -m py_compile ship_lambda/handler.py src/careloop/channels/ses.py
+      - store_test_results:
+          path: test-results
+
+workflows:
+  careloop-ship:
+    jobs:
+      - careloop-safety-tests
