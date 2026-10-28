@@ -38,7 +38,7 @@ class HandlerTests(unittest.TestCase):
         with patch.dict(os.environ, dict(ENV, CARELOOP_ENABLE_LIVE_SEND='true'), clear=True):
             dry = handler(EVENT, None)
             approved = dict(EVENT, approved_payload_sha256=dry['payload_sha256'], explicit_staff_approval=True, send_once=True)
-            self.assertEqual(handler(approved, None)['reason'], 'durable_send_ledger_required')
+            self.assertEqual(handler(approved, None)['reason'], 'trusted_approval_signature_required')
 
     def test_rejects_malformed_input(self):
         with patch.dict(os.environ, ENV):
