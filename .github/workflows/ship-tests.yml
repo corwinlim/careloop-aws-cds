@@ -1,0 +1,29 @@
+name: CareLoop Ship Safety Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [ship/aws-cds-final-20261028]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run repository tests
+        env:
+          PYTHONPATH: "${{ github.workspace }}/src:${{ github.workspace }}"
+        run: python -m pytest -q tests
+      - name: Compile Lambda modules
+        run: python -m py_compile ship_lambda/handler.py src/careloop/channels/ses.py
