@@ -41,6 +41,8 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm test
+      - name: Vercel Express HTTP smoke (no AWS sends)
+        run: npm run test:vercel
       - name: Basic JavaScript syntax
         run: |
           node --check server/index.js
