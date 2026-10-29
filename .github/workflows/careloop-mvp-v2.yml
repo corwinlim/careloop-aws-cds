@@ -24,12 +24,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for file in package.json app.js server/index.js server/data.js server/seed.js server/ses-provider.js client/public/index.html client/public/app.jsx tests/run-tests.js tests/ses-provider.test.js; do
+          for file in package.json app.js server/index.js server/data.js server/seed.js server/ses-provider.js client/public/index.html client/public/app.jsx public/index.html public/app.jsx tests/run-tests.js tests/ses-provider.test.js; do
             if [ ! -s "$file" ]; then
               echo "::error::MVP source missing or empty: $file"
               exit 1
             fi
           done
+      - name: Verify Vercel public assets match MVP v2 originals
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp client/public/index.html public/index.html
+          cmp client/public/app.jsx public/app.jsx
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
