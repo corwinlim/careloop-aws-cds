@@ -1,0 +1,50 @@
+name: CareLoop MVP v2 integration gate
+on:
+  push:
+    branches:
+      - build/careloop-mvp-v2-aws-ses-vercel
+  pull_request:
+    paths:
+      - "integrations/careloop-mvp-v2/**"
+      - ".github/workflows/careloop-mvp-v2.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: integrations/careloop-mvp-v2
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Require complete MVP v2 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in package.json app.js server/index.js server/data.js server/seed.js server/ses-provider.js client/public/index.html client/public/app.jsx public/index.html public/app.jsx tests/run-tests.js tests/ses-provider.test.js; do
+            if [ ! -s "$file" ]; then
+              echo "::error::MVP source missing or empty: $file"
+              exit 1
+            fi
+          done
+      - name: Verify Vercel public assets match MVP v2 originals
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmp client/public/index.html public/index.html
+          cmp client/public/app.jsx public/app.jsx
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - name: Vercel Express HTTP smoke (no AWS sends)
+        run: npm run test:vercel
+      - name: Basic JavaScript syntax
+        run: |
+          node --check server/index.js
+          node --check server/ses-provider.js
+          node --check app.js

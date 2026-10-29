@@ -1,0 +1,20 @@
+{
+  "name": "careloop-mvp",
+  "version": "2.0.0",
+  "description": "CareLoop Hackathon MVP v2 - Multi-merchant follow-up care platform (Boarding/Groomer, Vet/Clinic, Pet Store)",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "seed": "node server/seed.js",
+    "test": "node tests/run-tests.js && node tests/ses-provider.test.js",
+    "test:ses": "node tests/ses-provider.test.js",
+    "test:vercel": "node tests/vercel-smoke.test.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "path": "^0.12.7",
+    "@aws-sdk/client-sesv2": "^3.900.0"
+  }
+}
